@@ -1,0 +1,159 @@
+{
+  "name": "Orbitel Campaign Copilot AI Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "public": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "a6152a32-9891-44d4-9fea-9f1fd997a2b0",
+      "name": "When chat message received",
+      "webhookId": "d5a72d24-7f26-4382-afff-f8d8fea29ffd"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are the Campaign Copilot AI — Orbitel's senior Business Intelligence & Marketing Strategy Officer. You analyze customer feedback with the depth and precision of a seasoned marketing executive who understands telecom operations, revenue protection, and customer lifecycle management.\n\nWhen a user provides customer feedback, deliver a comprehensive intelligence briefing:\n\n1. TOPIC: Classify into one of: Billing Dispute, Service Outage, Slow Internet, Poor Support, Plan Pricing, Contract Issue, Network Coverage, Roaming Issue, Data Bundle, Account Management, Equipment Issue, Product Feedback, Upsell Opportunity\n\n2. SENTIMENT: One of: Very Negative, Negative, Neutral, Positive, Very Positive\n\n3. SENTIMENT_SCORE: Number from -1.0 to 1.0\n\n4. URGENCY: One of: Critical, High, Medium, Low\n\n5. CHURN_RISK: Percentage 0-100 indicating probability the customer will leave within 30 days. Consider: sentiment severity, whether they mentioned competitors, duration of issue, number of prior contacts, and whether they issued an ultimatum.\n\n6. REVENUE_IMPACT: Estimate monthly revenue at risk in PKR. Use these benchmarks — Residential: Rs. 3,000-8,000/month, Business: Rs. 15,000-80,000/month depending on product. State the segment and product type.\n\n7. RECOMMENDED_TEMPLATE: One of: Immediate Escalation & Apology, Retention Discount Offer, Service Recovery + Credit, Plan Upgrade Recommendation, Technical Support Callback, Loyalty Reward & Thank You, Bundle Upsell Opportunity, Billing Clarification & Adjustment, Proactive Service Check, Win-Back Offer\n\n8. RECOMMENDED_ACTION: A specific, actionable 2-3 sentence recommendation written as if you're briefing the CMO. Include what to do, who should do it, and by when.\n\n9. ESCALATE_TO: Which department(s) should be involved — one or more of: Network Operations, Billing & Finance, Technical Support, Customer Success, Sales Team, Legal & Compliance, Senior Management\n\n10. PERSONALIZED_RESPONSE: Write a 3-4 sentence professional response that Orbitel could send directly to this customer. Address their specific issue, acknowledge their frustration or appreciation, and state a concrete next step. Use a warm but professional tone.\n\n11. UPSELL_OPPORTUNITY: If applicable, identify any buying signal and suggest a specific product or plan upgrade with estimated additional revenue. If no upsell opportunity exists, state \"None identified.\"\n\n12. ROOT_CAUSE: In one sentence, identify the likely systemic root cause behind this complaint — not just the surface issue but what process, system, or policy failure likely caused it.\n\n13. CONFIDENCE: Number from 0.0 to 1.0\n\n14. KEY_PHRASES: Up to 3 key phrases from the feedback\n\nContext about Orbitel:\n- Postpaid telecom operator in Pakistan (Residential + Business segments)\n- Products: OMC, Mobile Starter, Broadband Internet, FTTH, Digital TV, Cloud, Analytica, CMS, AdsPro, CPaaS, D2D, DI, DHS, FFM, OTS\n- Average revenue: Residential Rs. 3,000-8,000/month, Business Rs. 15,000-80,000/month\n- Key competitors: Jazz, Telenor, Zong, Ufone\n- Business priorities: reduce churn, increase ARPU, improve NPS score\n\nRespond ONLY in valid JSON format with the exact field names listed above. No markdown, no explanation, just the JSON object.\n\nCRITICAL: Your entire response must be ONLY the JSON object. Do not write any text before or after the JSON. Do not use markdown code blocks. Start your response with { and end with }. Nothing else."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "0c4d863b-7e9b-4593-a584-821f43da552c",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        64,
+        208
+      ],
+      "id": "c32be0d2-c9f3-497f-b7f2-37e5b22dba03",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "n71uXlRftSIIHhql",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const output = $input.first().json.output || $input.first().json.text || '';\nlet parsed = {};\n\ntry {\n  // Find JSON in the AI response\n  let text = output;\n  let s = text.indexOf(\"{\");\n  let e = text.lastIndexOf(\"}\");\n  if (s !== -1 && e > s) {\n    parsed = JSON.parse(text.substring(s, e + 1));\n  }\n} catch(err) {\n  // Try double-decode\n  try {\n    let inner = JSON.parse(output);\n    if (typeof inner === \"string\") parsed = JSON.parse(inner);\n    else parsed = inner;\n  } catch(e2) {}\n}\n\n// Helper: get field case-insensitively\nconst g = (field) => parsed[field] || parsed[field.toUpperCase()] || parsed[field.toLowerCase()] || '';\n\nreturn [{\n  json: {\n    timestamp: new Date().toISOString(),\n    customer_id: String(g('customer_id') || 'N/A'),\n    topic: String(g('topic') || ''),\n    sentiment: String(g('sentiment') || ''),\n    sentiment_score: String(g('sentiment_score') || ''),\n    urgency: String(g('urgency') || ''),\n    churn_risk: String(g('churn_risk') || ''),\n    revenue_impact: String(g('revenue_impact') || ''),\n    recommended_template: String(g('recommended_template') || ''),\n    recommended_action: String(g('recommended_action') || ''),\n    escalate_to: Array.isArray(g('escalate_to')) ? g('escalate_to').join(', ') : String(g('escalate_to') || ''),\n    personalized_response: String(g('personalized_response') || ''),\n    upsell_opportunity: String(g('upsell_opportunity') || ''),\n    root_cause: String(g('root_cause') || ''),\n    confidence: String(g('confidence') || '0.85'),\n    key_phrases: Array.isArray(g('key_phrases')) ? g('key_phrases').join(', ') : String(g('key_phrases') || ''),\n    processed_by: 'Campaign Copilot AI Agent v1.0'\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        0
+      ],
+      "id": "b95c407a-4af6-4d07-92ec-c58b16d5a731",
+      "name": "Parser"
+    },
+    {
+      "parameters": {
+        "jsCode": "// In-memory logging — n8n cloud safe\nconst data = $input.first().json;\n\nreturn [{\n  json: {\n    timestamp: data.timestamp,\n    customer_id: data.customer_id,\n    topic: data.topic,\n    sentiment: data.sentiment,\n    sentiment_score: data.sentiment_score,\n    urgency: data.urgency,\n    recommended_template: data.recommended_template,\n    recommended_action: data.recommended_action,\n    confidence: data.confidence,\n    key_phrases: data.key_phrases,\n    processed_by: data.processed_by,\n    log_status: 'Logged successfully',\n    csv_row: [\n      data.timestamp,\n      data.customer_id,\n      data.topic,\n      data.sentiment,\n      data.sentiment_score,\n      data.urgency,\n      data.recommended_template,\n      data.confidence\n    ].join(',')\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        848,
+        48
+      ],
+      "id": "597f5ba8-22fa-422a-a6ba-7ff81fd57a67",
+      "name": "Log to CSV"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Parser",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parser": {
+      "main": [
+        [
+          {
+            "node": "Log to CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "309d8676-bdcb-45d0-83e3-c75ed9762520",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "833e750a4652e0d22db2a649b3a8c5b8f86b4e9ef0cf1fcd3f78b22726bd1479"
+  },
+  "id": "g1PM9nVi3C9hEVo3",
+  "tags": [
+    {
+      "updatedAt": "2026-04-13T08:50:36.878Z",
+      "createdAt": "2026-04-13T08:50:36.878Z",
+      "id": "CwyaI6FiaqdAibZx",
+      "name": "Orbitel"
+    },
+    {
+      "updatedAt": "2026-04-13T08:50:36.908Z",
+      "createdAt": "2026-04-13T08:50:36.908Z",
+      "id": "o6qDJ0Ouengutx2F",
+      "name": "AI Agent"
+    }
+  ]
+}
