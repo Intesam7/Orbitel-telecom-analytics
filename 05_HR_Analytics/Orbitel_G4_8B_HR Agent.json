@@ -1,0 +1,391 @@
+{
+  "name": "CV Parser and Shortlist Assistant",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "1IROnXbqMtCqxFyNTLhejLvCyIJCtCaOB",
+          "mode": "list",
+          "cachedResultName": "Orbitel Cv's",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1IROnXbqMtCqxFyNTLhejLvCyIJCtCaOB"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "2fd10a64-d940-4fd8-be47-9316b2e6e294",
+      "name": "New CV Uploaded",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        304
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "kWQZI33dPPFFQf2n",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.id }}"
+        },
+        "options": {
+          "binaryPropertyName": "data"
+        }
+      },
+      "id": "210f7ec1-a8d6-4fa6-9e4b-b8381e9fb1ec",
+      "name": "Download CV File",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        464,
+        304
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "kWQZI33dPPFFQf2n",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {
+          "joinPages": true
+        }
+      },
+      "id": "0cd18ef8-2886-4494-b406-384d68401f67",
+      "name": "Extract CV Text",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        688,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are an expert HR Recruitment Assistant for a telecom company called \"Orbitel\". Your job is to extract candidate details from the provided CV text and output them as a strict JSON object. Evaluate the candidate against these Transparent Shortlist Rules:\n\nRule 1 (Ops Spike): If they have 2+ years of Network/NOC experience -> Recommended_Department: \"Operations\", Shortlist_Status: \"Interview Immediately\".\n\nRule 2 (Sales Spike): If they have B2B/Corporate Sales experience -> Recommended_Department: \"Sales\", Shortlist_Status: \"Interview Immediately\".\n\nRule 3 (Collections Need): If they have Call Center/Collections experience -> Recommended_Department: \"Collections\", Shortlist_Status: \"Keep on File\".\n\nRule 4 (Reject): If they have less than 1 year of total experience -> Shortlist_Status: \"Reject\".\n\nOutput Format: You MUST output valid JSON with exactly these keys: Candidate_ID, Full_Name, Email_Address, Phone_Number, Highest_Education, Total_Years_Experience, Core_Skills, Telecom_Experience, Sales_Experience, Network_Ops_Experience, Call_Center_Collections_Experience, Recommended_Department, Shortlist_Status, AI_Shortlist_Reason."
+            },
+            {
+              "content": "={{ $json.text }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {
+          "textFormat": {
+            "textOptions": {
+              "type": "json_object"
+            }
+          },
+          "temperature": 0.3
+        }
+      },
+      "id": "af4c2b25-a37e-47bb-ae69-feaa9e3457df",
+      "name": "Parse CV with AI",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        912,
+        304
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "hB1MqSH33ClrSMLY",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1XV4wgfJWHVVb93nNiR8rYsS9RZQzw6M6C4azvO42mBE",
+          "mode": "list",
+          "cachedResultName": "Orbitel CVs (Responses)",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1XV4wgfJWHVVb93nNiR8rYsS9RZQzw6M6C4azvO42mBE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 703358843,
+          "mode": "list",
+          "cachedResultName": "Form Responses 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1XV4wgfJWHVVb93nNiR8rYsS9RZQzw6M6C4azvO42mBE/edit#gid=703358843"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Candidate_ID",
+              "displayName": "Candidate_ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Full_Name",
+              "displayName": "Full_Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email_Address",
+              "displayName": "Email_Address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone_Number",
+              "displayName": "Phone_Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Highest_Education",
+              "displayName": "Highest_Education",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Total_Years_Experience",
+              "displayName": "Total_Years_Experience",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Core_Skills",
+              "displayName": "Core_Skills",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Telecom_Experience",
+              "displayName": "Telecom_Experience",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Sales_Experience",
+              "displayName": "Sales_Experience",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Network_Ops_Experience",
+              "displayName": "Network_Ops_Experience",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Call_Center_Collections_Experience",
+              "displayName": "Call_Center_Collections_Experience",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Recommended_Department",
+              "displayName": "Recommended_Department",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Shortlist_Status",
+              "displayName": "Shortlist_Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "AI_Shortlist_Reason",
+              "displayName": "AI_Shortlist_Reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7a4cf6c8-06d7-400d-89e1-78a4953321f0",
+      "name": "Save to Candidate Database",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1488,
+        304
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "S1nQOfK9382VIRHl",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const output = $input.item.json.output;\n\nif (!output) {\n  throw new Error(\"No output received from AI\");\n}\n\nlet parsedData;\nif (typeof output === \"string\") {\n  parsedData = JSON.parse(output);\n} else if (Array.isArray(output) && output.length > 0) {\n  parsedData = output[0];\n} else if (typeof output === \"object\") {\n  parsedData = output;\n} else {\n  throw new Error(\"Unexpected output format: \" + typeof output);\n}\n\nif (typeof parsedData !== \"object\" || parsedData === null) {\n  throw new Error(\"Parsed data is not a valid object\");\n}\n\nreturn { json: parsedData };"
+      },
+      "id": "e32c33bf-ae02-42a7-851d-44074100bb9b",
+      "name": "Parse JSON Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1264,
+        304
+      ],
+      "retryOnFail": true
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New CV Uploaded": {
+      "main": [
+        [
+          {
+            "node": "Download CV File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download CV File": {
+      "main": [
+        [
+          {
+            "node": "Extract CV Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract CV Text": {
+      "main": [
+        [
+          {
+            "node": "Parse CV with AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse CV with AI": {
+      "main": [
+        [
+          {
+            "node": "Parse JSON Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save to Candidate Database": {
+      "main": [
+        []
+      ]
+    },
+    "Parse JSON Output": {
+      "main": [
+        [
+          {
+            "node": "Save to Candidate Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "be4b7243-5f81-48cf-9df4-54e1edb12c7f",
+  "meta": {
+    "instanceId": "f0f6561089e1d1351b8adf1662aca42b0ad5ab28f2998b1b1daf006a57ea731e"
+  },
+  "id": "CgpP2VeGoRrrQyzf",
+  "tags": []
+}
