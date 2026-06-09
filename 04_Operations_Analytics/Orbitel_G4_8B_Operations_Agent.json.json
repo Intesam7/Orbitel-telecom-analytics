@@ -1,0 +1,348 @@
+{
+  "name": "Orbitel Network Incident Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "15e3a3e4-fa96-4f7c-8318-9060934c5efe",
+              "name": "incident_message",
+              "value": "={{ $json['Incident Message'] }}",
+              "type": "string"
+            },
+            {
+              "id": "32ba7c2a-f5b2-443c-ab33-71ecbfbdbba1",
+              "name": "submitted_at",
+              "value": "={{ new Date().toISOString() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "02655fa4-f11c-4ec4-860c-5b3dfc969dad",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are a Network Operations Center (NOC) AI agent for Orbitel, a Pakistani telecom operator. Analyze incoming network incident messages and classify them.\n\nRespond with ONLY this JSON, no extra text:\n{\n  \"event_type\": \"congestion OR hardware fault OR power outage\",\n  \"severity\": \"Critical OR High OR Medium\",\n  \"root_cause\": \"Streaming demand OR Subscriber density growth OR Evening residential usage OR Holiday travel surge OR Peak commuter movement OR High-speed corridor traffic\",\n  \"city\": \"city name or Unknown\",\n  \"tower_id\": \"tower ID or Unknown\",\n  \"owner_team\": \"NOC Escalation Team OR NOC Level 2 Team OR NOC Level 1 Team OR Field Engineering Team OR Facilities Management Team\",\n  \"recommended_action\": \"one specific action sentence\",\n  \"confidence\": \"High OR Medium OR Low\"\n}\n\nRules:\n- congestion = network overload, slow speeds, dropped connections\n- hardware fault = equipment failure, device malfunction\n- power outage = power failure, electricity issue, UPS failure\n- Critical = city-wide, multiple towers, complete service loss\n- High = single tower, significant degradation\n- Medium = minor, intermittent, few users affected\n- Assign owner_team based on: Critical congestion = NOC Escalation Team, High congestion = NOC Level 2 Team, Medium congestion = NOC Level 1 Team, Any hardware fault = Field Engineering Team, Any power outage = Facilities Management Team"
+            },
+            {
+              "content": "={{ $('Edit Fields').item.json.incident_message }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        416,
+        0
+      ],
+      "id": "84951793-c7e8-4d85-a95c-09300b38c334",
+      "name": "Message a model",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "openAiApi": {
+          "id": "mx3vSvRsgMwOGnEf",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the OpenAI response text\nconst responseText = $input.first().json.message.content;\n\n// Clean it - remove any markdown code blocks if present\nconst cleaned = responseText\n  .replace(/```json/g, '')\n  .replace(/```/g, '')\n  .trim();\n\n// Parse the JSON\nlet parsed;\ntry {\n  parsed = JSON.parse(cleaned);\n} catch(e) {\n  // If parsing fails, return a default structure\n  parsed = {\n    event_type: \"Unknown\",\n    severity: \"Medium\",\n    root_cause: \"Unknown\",\n    city: \"Unknown\",\n    tower_id: \"Unknown\",\n    owner_team: \"NOC Level 1 Team\",\n    recommended_action: \"Manual review required\",\n    confidence: \"Low\"\n  };\n}\n\n// Generate a ticket ID\nconst now = new Date();\nconst ticketId = \"TKT-\" + now.getFullYear() + \n                 String(now.getMonth()+1).padStart(2,'0') +\n                 String(now.getDate()).padStart(2,'0') + '-' +\n                 String(now.getHours()).padStart(2,'0') +\n                 String(now.getMinutes()).padStart(2,'0') +\n                 String(now.getSeconds()).padStart(2,'0');\n\nreturn [{\n  json: {\n    ticket_id: ticketId,\n    timestamp: now.toISOString(),\n    incident_message: $('Set').first().json.incident_message,\n    event_type: parsed.event_type,\n    severity: parsed.severity,\n    root_cause: parsed.root_cause,\n    city: parsed.city,\n    tower_id: parsed.tower_id,\n    owner_team: parsed.owner_team,\n    recommended_action: parsed.recommended_action,\n    confidence: parsed.confidence\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        0
+      ],
+      "id": "601f2f2f-d7d3-4c2b-b746-612698000de8",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "formTitle": "Orbitel NOC — Network Incident Agent",
+        "formDescription": "Submit a network incident for automatic classification",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Incident Message",
+              "fieldType": "textarea",
+              "placeholder": "Example: Tower TW-010 in Karachi showing drops since 19:30..."
+            },
+            {
+              "fieldLabel": "Reported By"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.5,
+      "position": [
+        0,
+        0
+      ],
+      "id": "7b724284-b9a5-40d5-b5a0-2ac4f80518f6",
+      "name": "On form submission",
+      "webhookId": "fc9db6fe-be43-4d9c-9433-aa986e10921d"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1MER-kYrP3CF8ZTlJMd6hDfWDTYUuz3T775ZoS-eEtzU",
+          "mode": "list",
+          "cachedResultName": "Orbitel_Network_Agent_Log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1MER-kYrP3CF8ZTlJMd6hDfWDTYUuz3T775ZoS-eEtzU/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1MER-kYrP3CF8ZTlJMd6hDfWDTYUuz3T775ZoS-eEtzU/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Ticket ID": "={{ $json.ticket_id }}",
+            "Timestamp": "={{ $json.timestamp }}",
+            "Raw Input Message": "={{ $json.incident_message }}",
+            "Event Type": "={{ $json.event_type }}",
+            "Severity": "={{ $json.severity }}",
+            "Root Cause": "={{ $json.root_cause }}",
+            "City": "={{ $json.city }}",
+            "Tower ID": "={{ $json.tower_id }}",
+            "Owner Team": "={{ $json.owner_team }}",
+            "Recommended Action": "={{ $json.recommended_action }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Ticket ID",
+              "displayName": "Ticket ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Raw Input Message",
+              "displayName": "Raw Input Message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Event Type",
+              "displayName": "Event Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Severity",
+              "displayName": "Severity",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Root Cause",
+              "displayName": "Root Cause",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "City",
+              "displayName": "City",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Tower ID",
+              "displayName": "Tower ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Owner Team",
+              "displayName": "Owner Team",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Recommended Action",
+              "displayName": "Recommended Action",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        976,
+        0
+      ],
+      "id": "3f968619-b80f-4d7b-a3bb-304edbca386f",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "vINh0RaGhRRYhOYu",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "✅ Ticket Created Successfully",
+        "completionMessage": "=Your incident has been classified and logged.\n\nTicket ID: {{ $('Code in JavaScript').item.json.ticket_id }}\nEvent Type: {{ $('Code in JavaScript').item.json.event_type }}\nSeverity: {{ $('Code in JavaScript').item.json.severity }}\nAssigned To: {{ $('Code in JavaScript').item.json.owner_team }}\nAction: {{ $('Code in JavaScript').item.json.recommended_action }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        1184,
+        0
+      ],
+      "id": "a99da253-d292-4e09-a300-56dff3a6f11a",
+      "name": "Form",
+      "webhookId": "3324a544-d5d7-46e1-b81c-6bd34476fa50"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Form",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "bca9c69b-74f5-48eb-8fb9-d90eb5444820",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "dd2319f49c8ced745ae6c81ad6e512f8c212bd89ffaa94c9635550f731faf1d4"
+  },
+  "id": "cDkZK2T36TV4u5Km",
+  "tags": []
+}
